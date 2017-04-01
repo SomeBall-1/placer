@@ -1,6 +1,8 @@
 let active = false,
   reset = false,
   updating = false,
+  xstart,
+  ystart,
   width,
   height,
   drawn = 0,
@@ -91,9 +93,7 @@ function drawPixel(color,x,y) {
 
 function updateMap() {
   updating = true;
-  let xstart = parseInt($('#xcoord').val()),
-    x = xstart,
-    ystart = parseInt($('#ycoord').val()),
+  let x = xstart,
     y = ystart;
 
   $('#map')[0].width = width*2;
@@ -151,7 +151,7 @@ function getAndSetWaitTime() {
       Authorize('refresh_token',login_items.refresh_token).then(getAndSetWaitTime);
     } else {
       console.log('waiting:',result.wait_seconds);
-      active = setTimeout(drawTile, result.wait_seconds*1000);
+      active = setTimeout(drawTile, result.wait_seconds*1000+5000); //extra 5 seconds for fun
       if(!updating) updateMap();
     }
   });
@@ -162,7 +162,7 @@ function drawTile() {
   let x, y, color;
   for(let i = 0;i < baseMap.length;i++) {
     for(let j = 0;j < baseMap[0].length;j++) {
-      if((!skipTile[i] || !skipTile[i][j]) && baseMap[i][j] && recordedMap[i] && recordedMap[i][j] && baseMap[i][j]!=recordedMap[i][j]) {
+      if((!skipTile[i] || !skipTile[i][j]) && baseMap[i][j] && recordedMap[i] && recordedMap[i][j] && baseMap[i][j]!==recordedMap[i][j]) {
         x = i;
         y = j;
         color = baseMap[i][j];
@@ -186,10 +186,10 @@ function drawTile() {
         success: function(result) {
           if(result.error) Authorize('refresh_token',login_items.refresh_token).then(drawTile);
           else {
-            console.log('placed at:',x,y);
+            console.log('placed',color,'at:',x,y);
             $('#placed').html(++drawn);
             recordedMap[x][y] = color;
-            drawPixel(rgbcolors[recordedMap[x][y]],(x-parseInt($('#xcoord').val()))*2,(y-parseInt($('#ycoord').val()))*2);
+            drawPixel(rgbcolors[recordedMap[x][y]],(x-xstart)*2,(y-ystart)*2);
             skipTile = [[]];
             getAndSetWaitTime();
           }
@@ -200,13 +200,14 @@ function drawTile() {
       });
     }
     $.getJSON('https://www.reddit.com/api/place/pixel.json',{x,y},function(json) { //confirm it's still bad
-      if(json.color && json.color===recordedMap[x][y]) {//still bad
+      if(json.color && json.color!==baseMap[x][y]) {//still bad
         postTile();
       } else {
         console.log('tile no longer bad:',x,y);
         console.log('was:',recordedMap[x][y],'should be:',baseMap[x][y],'now:',json.color||0);
         recordedMap[x][y] = json.color || 0;
-        drawTile();
+        drawPixel(rgbcolors[recordedMap[x][y]],(x-xstart)*2,(y-ystart)*2);
+        drawTile(); //find another tile instead
       }
     },function(e) {
       console.log('error getting tile color:',x,y);
@@ -236,7 +237,21 @@ function begin() {
         height = img.height;
         $('#base').attr('src',fr.result);
         $('#dims').html(img.width+' x '+img.height);
+        if(updating) {
+          $('#reload').html('Load Map');
+          reset = true;
+          recordedMap = [[]];
+          $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
+        }
         generateBaseMap();
+        if(active) {
+          setTimeout(function() {
+            $(this).html('Reset Map');
+            xstart = parseInt($('#xcoord').val());
+            ystart = parseInt($('#ycoord').val());
+            updateMap();
+          },1000);
+        }
       }
     }
     fr.readAsDataURL(this.files[0]);
@@ -250,13 +265,26 @@ $('document').ready(function() {
   $('#reload').click(function() {
     if($('#base').attr('src')) {
       $(this).html('Reset Map');
-      updateMap();
+      if(updating) {
+        reset = true;
+        recordedMap = [[]];
+        $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
+        setTimeout(function() {
+          xstart = parseInt($('#xcoord').val());
+          ystart = parseInt($('#ycoord').val());
+          updateMap();
+        },1000);
+      } else {
+        xstart = parseInt($('#xcoord').val());
+        ystart = parseInt($('#ycoord').val());
+        updateMap();
+      }
     } else {
       alert('Upload an image first to define the size.');
     }
   });
   $('#activate').click(function() {
-    if($('#reload').html()=='Load Map') {
+    if($('#reload').html()==='Load Map') {
       alert('Upload an image first and load the map before drawing.');
     } else {
       if(!active) {
@@ -265,9 +293,10 @@ $('document').ready(function() {
         clearTimeout(active);
         active = false;
         reset = true;
-        $('#map')[0].getContext('2d').clearRect(0,0,$('#map').width(),$('#map').height());
+        recordedMap = [[]];
+        $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
       }
-      $(this).html(active?'Stop Placing':'Start Placing');
+      $(this).html(active?'Start Placing':'Stop Placing');
     }
   });
   //begin();
