@@ -80,6 +80,15 @@ function generateBaseMap() {
   }
 }
 
+function drawPixel(color,x,y) {
+  let idata = new ImageData(2,2);
+  idata.data[0] = idata.data[4] = idata.data[8] = idata.data[12] = color.r;
+  idata.data[1] = idata.data[5] = idata.data[9] = idata.data[13] = color.g;
+  idata.data[2] = idata.data[6] = idata.data[10] = idata.data[14] = color.b;
+  idata.data[3] = idata.data[7] = idata.data[11] = idata.data[15] = 255;
+  $('#map')[0].getContext('2d').putImageData(idata,x,y);
+}
+
 function updateMap() {
   updating = true;
   let xstart = parseInt($('#xcoord').val()),
@@ -101,13 +110,7 @@ function updateMap() {
         updating = false;
         return;
       }
-      let color = json.color?rgbcolors[json.color]:rgbcolors[0]; //some pixels return an error, default to white
-      let idata = new ImageData(2,2);
-      idata.data[0] = idata.data[4] = idata.data[8] = idata.data[12] = color.r;
-      idata.data[1] = idata.data[5] = idata.data[9] = idata.data[13] = color.g;
-      idata.data[2] = idata.data[6] = idata.data[10] = idata.data[14] = color.b;
-      idata.data[3] = idata.data[7] = idata.data[11] = idata.data[15] = 255;
-      $('#map')[0].getContext('2d').putImageData(idata,(x-xstart)*2,(y-ystart)*2);
+      drawPixel(json.color?rgbcolors[json.color]:rgbcolors[0],(x-xstart)*2,(y-ystart)*2) //some pixels return an error, default to white
       if(!recordedMap[x-xstart]) recordedMap[x-xstart] = [];
       recordedMap[x-xstart][y-ystart] = json.color?json.color:0;
 
@@ -186,6 +189,7 @@ function drawTile() {
             console.log('placed at:',x,y);
             $('#placed').html(++drawn);
             recordedMap[x][y] = color;
+            drawPixel(rgbcolors[recordedMap[x][y]],(x-parseInt($('#xcoord').val()))*2,(y-parseInt($('#ycoord').val()))*2);
             skipTile = [[]];
             getAndSetWaitTime();
           }
@@ -200,8 +204,8 @@ function drawTile() {
         postTile();
       } else {
         console.log('tile no longer bad:',x,y);
-        if(!skipTile[x]) skipTile[x] = [];
-        skipTile[x][y] = true;
+        console.log('was:',recordedMap[x][y],'should be:',baseMap[x][y],'now:',json.color||0);
+        recordedMap[x][y] = json.color || 0;
         drawTile();
       }
     },function(e) {
@@ -210,8 +214,8 @@ function drawTile() {
       skipTile[x][y] = true;
     });
   } else { //nothing to change, wait a bit
-    console.log('nothing to draw, trying again in 60 sec');
-    active = setTimeout(drawTile, 60000);
+    console.log('nothing to draw, trying again in 30 sec');
+    active = setTimeout(drawTile, 30000);
     if(!updating) updateMap();
   }
 }
