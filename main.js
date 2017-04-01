@@ -159,7 +159,7 @@ function drawTile() {
   let x, y, color;
   for(let i = 0;i < baseMap.length;i++) {
     for(let j = 0;j < baseMap[0].length;j++) {
-      if((!skipTile[i] || !skipTile[i][j]) && baseMap[i][j] && recordedMap[i] && baseMap[i][j]!=recordedMap[i][j]) {
+      if((!skipTile[i] || !skipTile[i][j]) && baseMap[i][j] && recordedMap[i] && recordedMap[i][j] && baseMap[i][j]!=recordedMap[i][j]) {
         x = i;
         y = j;
         color = baseMap[i][j];
@@ -200,9 +200,12 @@ function drawTile() {
         postTile();
       } else {
         console.log('tile no longer bad:',x,y);
+        if(!skipTile[x]) skipTile[x] = [];
+        skipTile[x][y] = true;
         drawTile();
       }
     },function(e) {
+      console.log('error getting tile color:',x,y);
       if(!skipTile[x]) skipTile[x] = [];
       skipTile[x][y] = true;
     });
