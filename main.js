@@ -5,7 +5,7 @@ function getCanvasBitmapState() {
       s += e.byteLength * 2
   }
   var e = $.Deferred(),
-      r, i = new Uint8Array(t.config.place_canvas_width * t.config.place_canvas_height),
+      r, i = new Uint8Array(1000*1000),//t.config.place_canvas_width * t.config.place_canvas_height),
       s = 0;
   if (window.fetch) fetch("https://oauth.reddit.com/api/place/board-bitmap", {
       credentials: "include"
@@ -61,17 +61,12 @@ function begin() {
       } else {
         $('#base').attr('src',fr.result);
         $('#dims')[0].innerHTML = img.width+' x '+img.height;
-        let canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx = canvas.getContext('2d');
-        ctx.drawImage(img,0,0,canvas.width,canvas.height);
         getCanvasBitmapState().then(function(tstamp,buffer) {
           let xstart = $('#xcoord').val();
           let x = xstart;
           let ystart = $('#ycoord').val();
           let y = ystart;
-          let idata = new ImageData(img.width,img.height);
+          let idata = new ImageData($('#base').width(),$('#base').height());
           for(let i = 0;i < idata.data.length;i+=4) {
             let color = hexToRgb(color_palette[buffer[y*1000+x]]);
             idata.data[0] = color.r;
@@ -85,10 +80,10 @@ function begin() {
               y += 1;
             }
           }
-          $('#map').width(img.width);
-          $('#map').height(img.height);
+          $('#map').width($('#base').width());
+          $('#map').height($('#base').height());
           ctx = $('#map')[0].getContext('2d');
-          ctx.putImageData(idata,0,0)
+          ctx.putImageData(idata,0,0);
         });
       }
     }
@@ -100,7 +95,7 @@ $('document').ready(function() {
   $('.login-link').click(function() {
     window.location.href = 'https://ssl.reddit.com/api/v1/authorize?client_id=PnOotpssqGG5Bg&response_type=code&state=blank&redirect_uri=https://SomeBall-1.github.io/placer/&duration=permanent&scope=identity';
   });
-  begin();
+  //begin();
 
   let client = {id: 'PnOotpssqGG5Bg', secret: 'klxKNHrPgQGuVV3ARqCj9_nLnXg'}; //not much of a secret
   function Authorize(type,val) {
