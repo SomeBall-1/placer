@@ -1,6 +1,5 @@
 let active = false,
-  reset = false,
-  updating = false,
+  waiting = false,
   xstart,
   ystart,
   width,
@@ -8,6 +7,7 @@ let active = false,
   drawn = 0,
   baseMap = [[]],
   recordedMap = [[]],
+  bitmapMap = [[]],
   skipTile = [[]],
   hexcolors = ["#ffffff", "#e4e4e4", "#888888", "#222222", "#ffa7d1", "#e50000", "#e59500", "#a06a42", "#e5d900", "#94e044", "#02be01", "#00d3dd", "#0083c7", "#0000ea", "#cf6ee4", "#820080"],
   rgbcolors = [{"r":255,"g":255,"b":255},{"r":228,"g":228,"b":228},{"r":136,"g":136,"b":136},{"r":34,"g":34,"b":34},{"r":255,"g":167,"b":209},{"r":229,"g":0,"b":0},{"r":229,"g":149,"b":0},{"r":160,"g":106,"b":66},{"r":229,"g":217,"b":0},{"r":148,"g":224,"b":68},{"r":2,"g":190,"b":1},{"r":0,"g":211,"b":221},{"r":0,"g":131,"b":199},{"r":0,"g":0,"b":234},{"r":207,"g":110,"b":228},{"r":130,"g":0,"b":128}],
@@ -91,49 +91,6 @@ function drawPixel(color,x,y) {
   $('#map')[0].getContext('2d').putImageData(idata,x,y);
 }
 
-function updateMap() {
-  updating = true;
-  let x = xstart,
-    y = ystart;
-
-  $('#map')[0].width = width*2;
-  $('#map')[0].height = height*2;
-  function start() {
-    if(reset) {
-      reset = false;
-      updating = false;
-      return;
-    }
-    function jsonResponse(json) {
-      if(reset) {
-        reset = false;
-        updating = false;
-        return;
-      }
-      drawPixel(json.color?rgbcolors[json.color]:rgbcolors[0],(x-xstart)*2,(y-ystart)*2) //some pixels return an error, default to white
-      if(!recordedMap[x-xstart]) recordedMap[x-xstart] = [];
-      recordedMap[x-xstart][y-ystart] = json.color?json.color:0;
-
-      x += 1;
-      if(x>xstart+width) {
-        x = xstart;
-        y += 1;
-      }
-  
-      if(y<=ystart+height) {
-        start();
-      } else {
-        updating = false;
-        if(active) updateMap();
-      }
-    }
-    $.getJSON('https://www.reddit.com/api/place/pixel.json',{x,y},jsonResponse,function(e) {
-      jsonResponse({}); //ignore error and default to white
-    });
-  }
-  start();
-}
-
 function getAndSetWaitTime() {
   login_items = JSON.parse($.cookie('reddit_info'));
   $.ajax({
@@ -151,14 +108,17 @@ function getAndSetWaitTime() {
       Authorize('refresh_token',login_items.refresh_token).then(getAndSetWaitTime);
     } else {
       console.log('waiting:',result.wait_seconds);
-      active = setTimeout(drawTile, result.wait_seconds*1000+5000); //extra 5 seconds for fun
-      if(!updating) updateMap();
+      $('#map').trigger('wait-time',new Date(Date.now()+result.wait_seconds*1000));
+      active = setTimeout(function() {
+        active = false;
+        drawTile()
+      }, result.wait_seconds*1000+2000); //extra 2 seconds for fun
     }
   });
 }
 
-
 function drawTile() {
+  waiting = false;
   let x, y, color;
   for(let i = 0;i < baseMap.length;i++) {
     for(let j = 0;j < baseMap[0].length;j++) {
@@ -172,7 +132,7 @@ function drawTile() {
     if(x) break;
   }
   if(x) {
-    console.log('placing at:',x,y);
+    console.log('placing at:',x+xstart,y+ystart);
     function postTile() {
       login_items = JSON.parse($.cookie('reddit_info'));
       $.ajax({
@@ -182,11 +142,11 @@ function drawTile() {
         headers: {
           'Authorization': login_items.token_type + ' ' + login_items.access_token
         },
-        data: {x, y, color},
+        data: {x: x+xstart, y: y+start, color: color},
         success: function(result) {
           if(result.error) Authorize('refresh_token',login_items.refresh_token).then(drawTile);
           else {
-            console.log('placed',color,'at:',x,y);
+            console.log('placed',color,'at:',x+xstart,y+ystart);
             $('#placed').html(++drawn);
             recordedMap[x][y] = color;
             drawPixel(rgbcolors[recordedMap[x][y]],(x-xstart)*2,(y-ystart)*2);
@@ -199,7 +159,7 @@ function drawTile() {
         }
       });
     }
-    $.getJSON('https://www.reddit.com/api/place/pixel.json',{x,y},function(json) { //confirm it's still bad
+    $.getJSON('https://www.reddit.com/api/place/pixel.json',{x: x+xstart,y: y+ystart},function(json) { //confirm it's still bad
       if(json.color && json.color!==baseMap[x][y]) {//still bad
         postTile();
       } else {
@@ -215,16 +175,35 @@ function drawTile() {
       skipTile[x][y] = true;
     });
   } else { //nothing to change, wait a bit
-    console.log('nothing to draw, trying again in 30 sec');
-    active = setTimeout(drawTile, 30000);
-    if(!updating) updateMap();
+    console.log('nothing to draw, trying again on map refresh');
+    waiting = true;
   }
 }
 
 function begin() {
   $('.login-link').hide();
   $('.main').fadeIn();
-  let ctx;
+  $('#activate').click(function() {
+    if($('#reload').html()==='Load Map') {
+      alert('Upload an image first and load the map before drawing.');
+    } else {
+      if(!active) {
+        xstart = parseInt($('#xcoord').val());
+        ystart = parseInt($('#ycoord').val());
+        width = $('#base').width();
+        height = $('#base').height();
+        generateBaseMap();
+        getAndSetWaitTime();
+        $(this).html('Stop Placing');
+      } else {
+        clearTimeout(active);
+        active = false;
+        waiting = false;
+        $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
+        $(this).html('Start Placing');
+      }
+    }
+  });
   $('#uploader').change(function() {
     let fr = new FileReader();
     fr.onload = function() {
@@ -233,25 +212,8 @@ function begin() {
       if(img.width>1000 || img.height>1000) {
         alert('Image is too large. Maximum dimensions are 1000x1000');
       } else {
-        width = img.width;
-        height = img.height;
         $('#base').attr('src',fr.result);
         $('#dims').html(img.width+' x '+img.height);
-        if(updating) {
-          $('#reload').html('Load Map');
-          reset = true;
-          recordedMap = [[]];
-          $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
-        }
-        generateBaseMap();
-        if(active) {
-          setTimeout(function() {
-            $(this).html('Reset Map');
-            xstart = parseInt($('#xcoord').val());
-            ystart = parseInt($('#ycoord').val());
-            updateMap();
-          },1000);
-        }
       }
     }
     fr.readAsDataURL(this.files[0]);
@@ -262,41 +224,43 @@ $('document').ready(function() {
   $('.login-link').click(function() {
     window.location.href = 'https://ssl.reddit.com/api/v1/authorize?client_id=PnOotpssqGG5Bg&response_type=code&state=blank&redirect_uri=https://SomeBall-1.github.io/placer/&duration=permanent&scope=identity';
   });
-  $('#reload').click(function() {
-    if($('#base').attr('src')) {
-      $(this).html('Reset Map');
-      if(updating) {
-        reset = true;
-        recordedMap = [[]];
-        $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
-        setTimeout(function() {
-          xstart = parseInt($('#xcoord').val());
-          ystart = parseInt($('#ycoord').val());
-          updateMap();
-        },1000);
-      } else {
-        xstart = parseInt($('#xcoord').val());
-        ystart = parseInt($('#ycoord').val());
-        updateMap();
-      }
-    } else {
-      alert('Upload an image first to define the size.');
+  $('#map').on('map-update',function(event,buffer) {
+    let shouldShow = $('#base').attr('src') && (active || waiting);
+    let r,
+      s = 0,
+      i = new Uint8Array(1000*1000);
+    function o(e) {
+      r || (r = (new Uint32Array(e.buffer, 0, 1))[0], e = new Uint8Array(e.buffer, 4));
+      for (var t = 0; t < e.byteLength; t++) i[s + 2 * t] = e[t] >> 4, i[s + 2 * t + 1] = e[t] & 15;
+      s += e.byteLength * 2
     }
-  });
-  $('#activate').click(function() {
-    if($('#reload').html()==='Load Map') {
-      alert('Upload an image first and load the map before drawing.');
-    } else {
-      if(!active) {
-        getAndSetWaitTime();
-      } else {
-        clearTimeout(active);
-        active = false;
-        reset = true;
-        recordedMap = [[]];
-        $('#map')[0].getContext('2d').clearRect(0,0,width*2,height*2);
+    o(new Uint8Array(buffer));
+    
+    let ind = 0, idata;
+    if(shouldShow) idata = new ImageData(width*2,height*2);
+    for(let j = ystart;j < height+ystart;j++) {
+      for(let k = xstart;k < width+xstart;k++) {
+        let c = i[k+j*1000];
+        let color = rgbcolors[c];
+        if(!recordedMap[k-xstart]) recordedMap[k-xstart] = [];
+        recordedMap[k-xstart][j-ystart] = c;
+        if(shouldShow) {
+          idata.data[ind] = idata.data[ind+4] = idata.data[ind+width*8] = idata.data[ind+4+width*8] = color.r;
+          idata.data[ind+1] = idata.data[ind+5] = idata.data[ind+1+width*8] = idata.data[ind+5+width*8] = color.g;
+          idata.data[ind+2] = idata.data[ind+6] = idata.data[ind+2+width*8] = idata.data[ind+6+width*8] = color.b;
+          idata.data[ind+3] = idata.data[ind+7] = idata.data[ind+3+width*8] = idata.data[ind+7+width*8] = 255;
+          ind += 8;
+        }
       }
-      $(this).html(active?'Start Placing':'Stop Placing');
+      if(shouldShow) ind += width*8;
+    }
+    if(shouldShow) {
+      $('#map')[0].width = width*2;
+      $('#map')[0].height = height*2;
+      $('#map')[0].getContext('2d').putImageData(idata,0,0);
+      if(waiting) {
+        drawTile();
+      }
     }
   });
   //begin();
