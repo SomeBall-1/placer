@@ -1,0 +1,20 @@
+.center-text {
+    text-align: center;
+}
+.login-link {
+    cursor: pointer;
+    margin: auto;
+    width: 33%;
+    border: 2px solid black;
+    border-radius: 4px;
+}
+.main {
+    margin: auto;
+    width: 90%;
+}
+.stuff-below {
+    margin-bottom: 50px;
+}
+.stuff-left {
+    margin-left: 25px;
+}

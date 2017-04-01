@@ -1,9 +1,36 @@
 <head>
   <meta charset="UTF-8">
   <title>Reddit /r/place Plaer</title>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script src="resources/jquery.min.js"></script>
+  <script src="resources/jquery.cookie.js"></script>
   <script src="main.js"></script>
+  <link rel="stylesheet" href="stylesheet.css">
 </head>
 <body>
-  
+  <h1 class="center-text">Reddit /r/place Placer</h1>
+  <div class="login-link center-text">
+    CLICK TO LOGIN TO REDDIT
+  </div>
+  <div class="main center-text" style="display: none;">
+    <div class="stuff-below">
+      <label for="uploader">Choose an image to draw: </label>
+      <input type="file" id="uploader" accept=".png">
+    </div>
+    <div>
+      <img id="base"></img>
+    </div>
+    <div id="dims" class="stuff-below">
+      0 x 0
+    </div>
+    <div class="stuff-below">
+      <label for="xcoord">X: </label>
+      <input type="number" id="xcoord" min="0" max="1000" value="0">
+      <label for="ycoord" class="stuff-left">Y: </label>
+      <input type="number" id="ycoord" min="0" max="1000" value="0">
+      <button id="reload" class="stuff-left">Reload Map</button>
+    </div>
+    <div class="stuff-below">
+      <canvas id="map" />
+    </div>
+  </div>
 </body>
