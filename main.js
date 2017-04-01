@@ -142,7 +142,7 @@ function drawTile() {
         headers: {
           'Authorization': login_items.token_type + ' ' + login_items.access_token
         },
-        data: {x: x+xstart, y: y+start, color: color},
+        data: {x: x+xstart, y: y+ystart, color: color},
         success: function(result) {
           if(result.error) Authorize('refresh_token',login_items.refresh_token).then(drawTile);
           else {
