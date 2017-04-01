@@ -35,7 +35,7 @@ function Authorize(type,val) {
     	success: function(result) {
         if(result.error) Authorize(type,val);
         else {
-          console.log('successful authorization');
+          console.log('successful authorization/refresh');
           result.timestamp = Date.now();
           $.cookie('reddit_info',JSON.stringify(result));
           resolve(true);
@@ -292,9 +292,7 @@ $('document').ready(function() {
         if (result.error) { //lost authorization
           Authorize('refresh_token',login_items.refresh_token).then(begin);
         } else {
-          console.log('successful refresh');
-          result.timestamp = Date.now();
-          $.cookie('reddit_info',JSON.stringify(result));
+          console.log('still active, no refresh needed');
           begin();
         }
       });
