@@ -256,7 +256,7 @@ $('document').ready(function() {
       $(this).html(active?'Stop Placing':'Start Placing');
     }
   });
-  begin();
+  //begin();
   
   let queries = window.location.search.substring(1);
   if(queries) { //api response
