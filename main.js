@@ -159,7 +159,7 @@ function drawTile() {
   let x, y, color;
   for(let i = 0;i < baseMap.length;i++) {
     for(let j = 0;j < baseMap[0].length;j++) {
-      if(!skipTile[i][j] && baseMap[i][j] && recordedMap[i] && baseMap[i][j]!=recordedMap[i][j]) {
+      if((!skipTile[i] || !skipTile[i][j]) && baseMap[i][j] && recordedMap[i] && baseMap[i][j]!=recordedMap[i][j]) {
         x = i;
         y = j;
         color = baseMap[i][j];
@@ -169,6 +169,7 @@ function drawTile() {
     if(x) break;
   }
   if(x) {
+    console.log('placing at:',x,y);
     function postTile() {
       login_items = JSON.parse($.cookie('reddit_info'));
       $.ajax({
@@ -182,6 +183,7 @@ function drawTile() {
         success: function(result) {
           if(result.error) Authorize('refresh_token',login_items.refresh_token).then(drawTile);
           else {
+            console.log('placed at:',x,y);
             $('#placed').html(++drawn);
             recordedMap[x][y] = color;
             skipTile = [[]];
@@ -193,13 +195,16 @@ function drawTile() {
         }
       });
     }
-    $.getJSON('https://www.reddit.com/api/place/pixel.json',{x,y},function(json) {
+    $.getJSON('https://www.reddit.com/api/place/pixel.json',{x,y},function(json) { //confirm it's still bad
       if(json.color && json.color===recordedMap[x][y]) {//still bad
         postTile();
+      } else {
+        console.log('tile no longer bad:',x,y);
+        drawTile();
       }
     },function(e) {
       if(!skipTile[x]) skipTile[x] = [];
-      skipTile [x][y] = true;
+      skipTile[x][y] = true;
     });
   } else { //nothing to change, wait a bit
     console.log('nothing to draw, trying again in 60 sec');
