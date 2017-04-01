@@ -27,10 +27,13 @@
       <input type="number" id="xcoord" min="0" max="1000" value="0">
       <label for="ycoord" class="stuff-left">Y: </label>
       <input type="number" id="ycoord" min="0" max="1000" value="0">
-      <button id="reload" class="stuff-left">Reload Map</button>
+      <button id="reload" class="stuff-left">Load Map</button>
     </div>
     <div class="stuff-below">
-      <canvas id="map" />
+      <canvas id="map">
     </div>
+    <div>
+      <button id="activate">Start Placing</button>
+      <span class="stuff-left">Tiles Placed: <b id="placed">0</b></span>
   </div>
 </body>
