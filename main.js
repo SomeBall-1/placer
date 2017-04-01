@@ -120,16 +120,16 @@ function getAndSetWaitTime() {
 function drawTile() {
   waiting = false;
   let x, y, color;
+  outerloop:
   for(let i = 0;i < baseMap.length;i++) {
     for(let j = 0;j < baseMap[0].length;j++) {
       if((!skipTile[i] || !skipTile[i][j]) && baseMap[i][j] && recordedMap[i] && recordedMap[i][j] && baseMap[i][j]!==recordedMap[i][j]) {
         x = i;
         y = j;
         color = baseMap[i][j];
-        break;
+        break outerloop;
       }
     }
-    if(x) break;
   }
   if(x) {
     console.log('placing at:',x+xstart,y+ystart);
