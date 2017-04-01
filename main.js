@@ -148,9 +148,7 @@ function getAndSetWaitTime() {
       Authorize('refresh_token',login_items.refresh_token).then(getAndSetWaitTime);
     } else {
       console.log('waiting:',result.wait_seconds);
-      active = setTimeout(function() {
-        drawTile();
-      }, result.wait_seconds*1000);
+      active = setTimeout(drawTile, result.wait_seconds*1000);
       if(!updating) updateMap();
     }
   });
@@ -161,7 +159,7 @@ function drawTile() {
   let x, y, color;
   for(let i = 0;i < baseMap.length;i++) {
     for(let j = 0;j < baseMap[0].length;j++) {
-      if(!skipTile[i][j] && basemap[i][j] && baseMap[i][j]!=recordedMap[i][j]) {
+      if(!skipTile[i][j] && baseMap[i][j] && recordedMap[i] && baseMap[i][j]!=recordedMap[i][j]) {
         x = i;
         y = j;
         color = baseMap[i][j];
@@ -203,6 +201,10 @@ function drawTile() {
       if(!skipTile[x]) skipTile[x] = [];
       skipTile [x][y] = true;
     });
+  } else { //nothing to change, wait a bit
+    console.log('nothing to draw, trying again in 60 sec');
+    active = setTimeout(drawTile, 60000);
+    if(!updating) updateMap();
   }
 }
 
